@@ -30,7 +30,7 @@ public class MyApplication extends Application {
     }
 
     private void registerCmCatcher() {
-        registerActivityLifecycleCallbacks(new AppLifeCycle());// 如果你已经实现了Application.ActivityLifecycleCallbacks 那就让你的该类继承AppLifeCycle
+   
         CmCatcher.registerCatcher(this, new CmThrowableHandler() {
             @Override
             public void handlerException(Throwable msg) {
