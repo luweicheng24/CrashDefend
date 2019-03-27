@@ -4,9 +4,8 @@ import android.app.Application;
 import android.util.Log;
 import android.widget.Toast;
 
-import cmcm.com.defendlibrary.AppLifeCycle;
 import cmcm.com.defendlibrary.CmCatcher;
-import cmcm.com.defendlibrary.CmThrowableHandler;
+import cmcm.com.defendlibrary.handler.CmThrowableHandler;
 
 /**
  * Created by luweicheng on 2019/3/26.
@@ -19,12 +18,11 @@ public class MyApplication extends Application {
     }
 
     private void registerCmCatcher() {
-        registerActivityLifecycleCallbacks(new AppLifeCycle());
         CmCatcher.registerCatcher(this, new CmThrowableHandler() {
             @Override
             public void handlerException(Throwable msg) {
                 // 异常上报
-                Toast.makeText(MyApplication.this, msg.getMessage(), Toast.LENGTH_LONG);
+                Toast.makeText(MyApplication.this, msg.getMessage(), Toast.LENGTH_LONG).show();
                 Log.e("lwc", "handlerException: " + msg.getMessage());
             }
         });

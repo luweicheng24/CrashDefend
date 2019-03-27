@@ -1,14 +1,16 @@
 package cmcm.com.defendlibrary;
 
-import android.content.Context;
+import android.app.Application;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.support.annotation.NonNull;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import cmcm.com.defendlibrary.exception.CmCrashException;
+import cmcm.com.defendlibrary.handler.CmThrowableHandler;
+import cmcm.com.defendlibrary.internal.AppLifeCycle;
 import me.weishu.reflection.Reflection;
 
 /**
@@ -35,57 +37,27 @@ public final class CmCatcher {
     private CmCatcher() {
     }
 
-    public static void registerCatcher(Context ctx, @NonNull final CmThrowableHandler handler) {
+    public static void registerCatcher(Application ctx, final CmThrowableHandler handler) {
         if (hasInstall.get()) {
             return;  // has register
+        }
+        if (ctx == null) {
+            return;
         }
         try {
             //解除 android P 反射限制
             Reflection.unseal(ctx);
         } catch (Throwable throwable) {
             throwable.printStackTrace();
+            return;
         }
+        boolean hasReflect = reflectHandlerActivityLife();
+        if (!hasReflect) {
+            return;
+        }
+        ctx.registerActivityLifecycleCallbacks(new AppLifeCycle()); // 注册activity周期回调
         mHandler = handler;
         hasInstall.compareAndSet(false, true);
-        try {
-            Class activityThreadClass = Class.forName("android.app.ActivityThread");
-            Object activityThread = activityThreadClass.getDeclaredMethod("currentActivityThread").invoke(null);
-            Field mhField = activityThreadClass.getDeclaredField("mH");
-            mhField.setAccessible(true);
-            final Handler mhHandler = (Handler) mhField.get(activityThread);
-            final Field callbackField = Handler.class.getDeclaredField("mCallback");
-            callbackField.setAccessible(true);
-            callbackField.set(mhHandler, new Handler.Callback() {
-                @Override
-                public boolean handleMessage(Message msg) {
-                    switch (msg.what) {
-                        case LAUNCH_ACTIVITY:
-                        case RESUME_ACTIVITY:
-                        case PAUSE_ACTIVITY:
-                        case STOP_ACTIVITY_HIDE:
-                        case DESTROY_ACTIVITY:
-                        case PAUSE_ACTIVITY_FINISHING:
-                        case EXECUTE_TRANSACTION:
-                        case NEW_INTENT:
-                        case RELAUNCH_ACTIVITY28:
-                        case RELAUNCH_ACTIVITY: {
-                            try {
-                                mhHandler.handleMessage(msg);
-                            } catch (Exception e) {
-                                mHandler.handlerException(e);
-                                AppLifeCycle.queue.getFirst().finish();
-                            } finally {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                }
-            });
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
@@ -93,7 +65,7 @@ public final class CmCatcher {
                     try {
                         Looper.loop();
                     } catch (Throwable e) {
-                        if (e instanceof CmCrashException) {  // unregiter 时取消该套机制
+                        if (e instanceof CmCrashException) {  // unregister 时取消该套机制
                             return;
                         }
                         if (handler != null) {  // 交由我们自己处置
@@ -105,6 +77,8 @@ public final class CmCatcher {
         });
 
         mUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler(); // 设置默认处理类 unregister时设置默认处理
+
+        // 下面线程异常处理机制基本就是子线程的处理 主线程我们已经自己处理了
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler()
 
         {
@@ -117,6 +91,66 @@ public final class CmCatcher {
         });
     }
 
+    private static boolean reflectHandlerActivityLife() {
+        try {
+            Class activityThreadClass = Class.forName("android.app.ActivityThread");
+            Object activityThread = activityThreadClass.getDeclaredMethod("currentActivityThread").invoke(null);
+            Field mhField = activityThreadClass.getDeclaredField("mH");
+            mhField.setAccessible(true);
+            final Handler mh = (Handler) mhField.get(activityThread);
+            final Field callbackField = Handler.class.getDeclaredField("mCallback");
+            callbackField.setAccessible(true);
+            callbackField.set(mh, new Handler.Callback() {
+                @Override
+                public boolean handleMessage(Message msg) {
+                    switch (msg.what) {
+                        case LAUNCH_ACTIVITY: {
+                            try {
+                                mh.handleMessage(msg);
+                            } catch (Throwable e) {
+                                mHandler.handlerException(e);
+                                ActivityCloseManager.getInstance().finish(msg);
+                            } finally {
+                                return true;
+                            }
+                        }
+                        case RESUME_ACTIVITY:
+                        case PAUSE_ACTIVITY:
+                        case STOP_ACTIVITY_HIDE:
+                        case PAUSE_ACTIVITY_FINISHING:
+                        case EXECUTE_TRANSACTION:
+                        case NEW_INTENT:
+                        case RELAUNCH_ACTIVITY28:
+                        case RELAUNCH_ACTIVITY: {
+                            try {
+                                mh.handleMessage(msg);
+                            } catch (Throwable e) {
+                                mHandler.handlerException(e);
+                                ActivityCloseManager.getInstance().finish(msg);
+                            } finally {
+                                return true;
+                            }
+                        }
+                        case DESTROY_ACTIVITY: {
+                            try {
+                                mh.handleMessage(msg);
+                            } catch (Throwable e) {
+                                mHandler.handlerException(e);
+                            } finally {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;// 反射失败
+        }
+        return true;
+    }
+
     public static void unRegister() {
         if (hasInstall.get()) {
             hasInstall.compareAndSet(true, false);
@@ -125,8 +159,7 @@ public final class CmCatcher {
             Thread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
         }
         if (mHandler != null) {
-            throw new CmCrashException("cancel exception catcher");
+            throw new CmCrashException("cancel exception catcher");  // 取消while循环
         }
-
     }
 }
