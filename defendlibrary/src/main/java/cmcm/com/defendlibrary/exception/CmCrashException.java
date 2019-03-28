@@ -8,5 +8,4 @@ public class CmCrashException extends RuntimeException {
     public CmCrashException(String msg) {
         super(msg);
     }
-
 }

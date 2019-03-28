@@ -55,7 +55,6 @@ public final class CmCatcher {
         if (!hasReflect) {
             return;
         }
-        ctx.registerActivityLifecycleCallbacks(new AppLifeCycle()); // 注册activity周期回调
         mHandler = handler;
         hasInstall.compareAndSet(false, true);
         new Handler(Looper.getMainLooper()).post(new Runnable() {
@@ -110,15 +109,14 @@ public final class CmCatcher {
                             } catch (Throwable e) {
                                 mHandler.handlerException(e);
                                 ActivityCloseManager.getInstance().finish(msg);
-                            } finally {
-                                return true;
                             }
+                            return true;
                         }
                         case RESUME_ACTIVITY:
                         case PAUSE_ACTIVITY:
                         case STOP_ACTIVITY_HIDE:
-                        case PAUSE_ACTIVITY_FINISHING:
-                        case EXECUTE_TRANSACTION:
+                        case PAUSE_ACTIVITY_FINISHING: // home键界面消失
+                        case EXECUTE_TRANSACTION: // android8.0新的Activity生命周期调用message
                         case NEW_INTENT:
                         case RELAUNCH_ACTIVITY28:
                         case RELAUNCH_ACTIVITY: {
@@ -127,18 +125,16 @@ public final class CmCatcher {
                             } catch (Throwable e) {
                                 mHandler.handlerException(e);
                                 ActivityCloseManager.getInstance().finish(msg);
-                            } finally {
-                                return true;
                             }
+                            return true;
                         }
                         case DESTROY_ACTIVITY: {
                             try {
                                 mh.handleMessage(msg);
                             } catch (Throwable e) {
                                 mHandler.handlerException(e);
-                            } finally {
-                                return true;
                             }
+                            return true;
                         }
                     }
                     return false;

@@ -10,6 +10,6 @@ public class ActivityCycle24_25 extends BaseActivityCycle {
 
     @Override
     public void finishActivity(IBinder binder) {
-        super.finishActivity(binder);
+       super.finishActivity(binder);
     }
 }

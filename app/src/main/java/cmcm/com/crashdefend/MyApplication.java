@@ -23,7 +23,7 @@ public class MyApplication extends Application {
             public void handlerException(Throwable msg) {
                 // 异常上报
                 Toast.makeText(MyApplication.this, msg.getMessage(), Toast.LENGTH_LONG).show();
-                Log.e("lwc", "handlerException: " + msg.getMessage());
+                Log.e("CmCatcher", "handlerException: " + msg.getMessage()+"线程name"+Thread.currentThread().getName());
             }
         });
     }

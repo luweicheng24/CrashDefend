@@ -1,6 +1,5 @@
 package cmcm.com.defendlibrary.adapter;
 
-import android.os.IBinder;
 import android.os.Message;
 
 /**

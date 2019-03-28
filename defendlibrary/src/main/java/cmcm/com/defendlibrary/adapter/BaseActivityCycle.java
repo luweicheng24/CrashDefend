@@ -18,8 +18,9 @@ public abstract class BaseActivityCycle implements IActivityCycle {
             activityManagerNativeClass = Class.forName("android.app.ActivityManagerNative");
             Method getDefaultMethod = activityManagerNativeClass.getDeclaredMethod("getDefault");
             Object activityManager = getDefaultMethod.invoke(null);
-            Method finishActivityMethod = activityManager.getClass().getDeclaredMethod("finishActivity", IBinder.class, int.class, Intent.class, Boolean.class);
-            finishActivityMethod.invoke(activityManager, binder, Activity.RESULT_CANCELED, null, false);
+            Method finishActivityMethod = activityManager.getClass().getDeclaredMethod("finishActivity", IBinder.class, int.class, Intent.class, int.class);
+            int DONT_FINISH_TASK_WITH_ACTIVITY = 0;
+            finishActivityMethod.invoke(activityManager, binder, Activity.RESULT_CANCELED, null, DONT_FINISH_TASK_WITH_ACTIVITY);
         } catch (Throwable e) {
             e.printStackTrace();
         }
