@@ -6,51 +6,79 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="界面跳转按钮" />
+
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="create"
-        android:text="create异常" />
+        android:text="开启新界面onCreate异常"
+        android:textAllCaps="false" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="start"
-        android:text="start异常" />
+        android:text="开启新界面onStart异常"
+        android:textAllCaps="false" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="resume"
-        android:text="resume异常" />
+        android:text="开启新界面onResume异常"
+        android:textAllCaps="false" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="pause"
-        android:text="pause异常" />
+        android:text="开启新界面onPause异常"
+
+        android:textAllCaps="false" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="stop"
-        android:text="stop异常" />
+        android:text="开启新界面onStop异常"
+        android:textAllCaps="false" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="当前界面操作" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="click"
-        android:text="点击异常" />
+        android:text="点击异常"
+        android:textAllCaps="false" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="subThread"
-        android:text="子线程异常" />
+        android:text="子线程异常"
+        android:textAllCaps="false" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="handlerError"
+        android:text="Handler异常"
+        android:textAllCaps="false" />
 
     <TextView
         android:id="@+id/tv_age"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:text="HelloWorld" />
+        android:text="HelloWorld"
+        android:textAllCaps="false" />
 </LinearLayout>

@@ -3,8 +3,8 @@ package cmcm.com.crashdefend;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.widget.TextView;
 
@@ -71,5 +71,14 @@ public class MainActivity extends Activity {
                 int a = 5 / 0;
             }
         }.start();
+    }
+
+    public void handlerError(View view) {
+        new Handler().post(new Runnable() {
+            @Override
+            public void run() {
+                int a = 5 / 0;
+            }
+        });
     }
 }

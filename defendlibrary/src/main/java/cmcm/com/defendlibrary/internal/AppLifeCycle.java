@@ -5,21 +5,19 @@ import android.app.Application;
 import android.os.Bundle;
 import android.util.Log;
 
-import java.util.ArrayDeque;
-
-import cmcm.com.defendlibrary.CmCatcher;
+import java.util.ArrayList;
 
 /**
  * Created by luweicheng on 2019/3/26.
  */
 public class AppLifeCycle implements Application.ActivityLifecycleCallbacks {
-    public static ArrayDeque<Activity> queue = new ArrayDeque<Activity>(4);
+    public static ArrayList<Activity> queue = new ArrayList<>(4);
     private static final String TAG = "AppLifeCycle";
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
         Log.i(TAG, "onActivityCreated: ");
-        queue.addFirst(activity);
+        queue.add(activity);
     }
 
     @Override
@@ -50,9 +48,6 @@ public class AppLifeCycle implements Application.ActivityLifecycleCallbacks {
     @Override
     public void onActivityDestroyed(Activity activity) {
         Log.i(TAG, "onActivityDestroyed: ");
-        queue.removeFirst();
-        if (queue.size() == 0) {
-            CmCatcher.unRegister();
-        }
+        queue.remove(activity);
     }
 }

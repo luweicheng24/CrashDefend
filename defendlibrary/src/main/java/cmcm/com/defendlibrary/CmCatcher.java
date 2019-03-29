@@ -1,16 +1,21 @@
 package cmcm.com.defendlibrary;
 
+import android.app.Activity;
 import android.app.Application;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
 
-import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import cmcm.com.defendlibrary.exception.CmCrashException;
+import cmcm.com.defendlibrary.exception.ReflectException;
 import cmcm.com.defendlibrary.handler.CmThrowableHandler;
+import cmcm.com.defendlibrary.internal.ActivityCloseManager;
 import cmcm.com.defendlibrary.internal.AppLifeCycle;
+import cmcm.com.defendlibrary.utils.Reflect;
 import me.weishu.reflection.Reflection;
 
 /**
@@ -55,6 +60,7 @@ public final class CmCatcher {
         if (!hasReflect) {
             return;
         }
+        ctx.registerActivityLifecycleCallbacks(new AppLifeCycle());
         mHandler = handler;
         hasInstall.compareAndSet(false, true);
         new Handler(Looper.getMainLooper()).post(new Runnable() {
@@ -65,9 +71,12 @@ public final class CmCatcher {
                         Looper.loop();
                     } catch (Throwable e) {
                         if (e instanceof CmCrashException) {  // unregister 时取消该套机制
+                            if (BuildConfig.DEBUG) {
+                                Log.i("lwc", "run: 取消crash机制 ");
+                            }
                             return;
                         }
-                        if (handler != null) {  // 交由我们自己处置
+                        if (handler != null) {
                             handler.handlerException(e);
                         }
                     }
@@ -75,76 +84,69 @@ public final class CmCatcher {
             }
         });
 
-        mUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler(); // 设置默认处理类 unregister时设置默认处理
-
-        // 下面线程异常处理机制基本就是子线程的处理 主线程我们已经自己处理了
+        mUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler()
 
         {
             @Override
             public void uncaughtException(Thread t, Throwable e) {
                 if (handler != null) {
-                    handler.handlerException(e); //交给我们自己处理
+                    handler.handlerException(e);
                 }
             }
         });
     }
 
     private static boolean reflectHandlerActivityLife() {
-        try {
-            Class activityThreadClass = Class.forName("android.app.ActivityThread");
-            Object activityThread = activityThreadClass.getDeclaredMethod("currentActivityThread").invoke(null);
-            Field mhField = activityThreadClass.getDeclaredField("mH");
-            mhField.setAccessible(true);
-            final Handler mh = (Handler) mhField.get(activityThread);
-            final Field callbackField = Handler.class.getDeclaredField("mCallback");
-            callbackField.setAccessible(true);
-            callbackField.set(mh, new Handler.Callback() {
-                @Override
-                public boolean handleMessage(Message msg) {
-                    switch (msg.what) {
-                        case LAUNCH_ACTIVITY: {
-                            try {
-                                mh.handleMessage(msg);
-                            } catch (Throwable e) {
-                                mHandler.handlerException(e);
-                                ActivityCloseManager.getInstance().finish(msg);
-                            }
-                            return true;
+        Object activityThread = Reflect.on("android.app.ActivityThread").method("currentActivityThread").invoke(null);
+        final Handler mh = (Handler) Reflect.on(activityThread.getClass()).field("mH").get(activityThread);
+        Reflect.on(Handler.class).field("mCallback").set(mh, new Handler.Callback() {
+            @Override
+            public boolean handleMessage(Message msg) {
+                switch (msg.what) {
+                    case LAUNCH_ACTIVITY:
+                    case RESUME_ACTIVITY:
+                    case PAUSE_ACTIVITY:
+                    case STOP_ACTIVITY_HIDE:
+                    case PAUSE_ACTIVITY_FINISHING:
+                    case EXECUTE_TRANSACTION:
+                    case NEW_INTENT:
+                    case RELAUNCH_ACTIVITY28:
+                    case RELAUNCH_ACTIVITY: {
+                        try {
+                            mh.handleMessage(msg);
+                        } catch (Throwable e) {
+                            handlerActivityLifeCycle(e, msg);
                         }
-                        case RESUME_ACTIVITY:
-                        case PAUSE_ACTIVITY:
-                        case STOP_ACTIVITY_HIDE:
-                        case PAUSE_ACTIVITY_FINISHING: // home键界面消失
-                        case EXECUTE_TRANSACTION: // android8.0新的Activity生命周期调用message
-                        case NEW_INTENT:
-                        case RELAUNCH_ACTIVITY28:
-                        case RELAUNCH_ACTIVITY: {
-                            try {
-                                mh.handleMessage(msg);
-                            } catch (Throwable e) {
-                                mHandler.handlerException(e);
-                                ActivityCloseManager.getInstance().finish(msg);
-                            }
-                            return true;
-                        }
-                        case DESTROY_ACTIVITY: {
-                            try {
-                                mh.handleMessage(msg);
-                            } catch (Throwable e) {
-                                mHandler.handlerException(e);
-                            }
-                            return true;
-                        }
+                        return true;
                     }
-                    return false;
+                    case DESTROY_ACTIVITY: {
+                        try {
+                            mh.handleMessage(msg);
+                        } catch (Throwable e) {
+                            mHandler.handlerException(e);
+                        }
+                        return true;
+                    }
                 }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;// 反射失败
-        }
+                return false;
+            }
+        });
         return true;
+    }
+
+    private static void handlerActivityLifeCycle(Throwable e, Message msg) {
+        mHandler.handlerException(e);
+        try {
+            ActivityCloseManager.getInstance().finish(msg);
+        } catch (ReflectException ex) {  // 一般不会出现此情况 实在出现了 finish所有界面
+            unRegister();
+            ArrayList<Activity> list = AppLifeCycle.queue;
+            for (Activity act : list) {
+                act.finish();
+            }
+        }
+
     }
 
     public static void unRegister() {
@@ -154,8 +156,11 @@ public final class CmCatcher {
         if (mUncaughtExceptionHandler != null) {
             Thread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
         }
-        if (mHandler != null) {
-            throw new CmCrashException("cancel exception catcher");  // 取消while循环
-        }
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                throw new CmCrashException("cancel exception catcher");  // 取消while循环
+            }
+        });
     }
 }

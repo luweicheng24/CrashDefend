@@ -1,4 +1,4 @@
-package cmcm.com.defendlibrary;
+package cmcm.com.defendlibrary.internal;
 
 import android.os.Build;
 import android.os.Message;
