@@ -13,7 +13,7 @@
 
 ```
 dependencies {
-	        implementation 'com.github.luweicheng24:CrashDefend:1.0.2'
+	        implementation 'com.github.luweicheng24:CrashDefend:1.0.3'
 	}
 ```
 3. 自定义Application中初始化：
